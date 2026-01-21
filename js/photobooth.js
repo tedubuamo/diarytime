@@ -12,9 +12,10 @@ class PhotoBooth {
         this.previewBtn = document.getElementById('preview-btn');
         this.downloadBtn = document.getElementById('download-btn');
         
-        // INPUTS BARU (Photo Upload)
+        // INPUTS BARU
         this.uploadPhotoBtn = document.getElementById('upload-photo-btn');
         this.photoFileInput = document.getElementById('photo-file-input');
+        this.switchCameraBtn = document.getElementById('switch-camera-btn'); // TOMBOL BARU
 
         // Inputs & Sidebar
         this.photoStrip = document.getElementById('photo-strip');
@@ -43,6 +44,9 @@ class PhotoBooth {
             data: '#6c5ce7' 
         };
         this.maxPhotos = 1;
+        
+        // STATE BARU: Default kamera depan
+        this.facingMode = 'user'; 
 
         this.init();
     }
@@ -53,40 +57,64 @@ class PhotoBooth {
     }
 
     async setupCamera() {
+        // Matikan stream lama jika ada (PENTING untuk switch camera)
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+        }
+
         try {
-            this.stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
+            // Gunakan this.facingMode agar dinamis
+            const constraints = {
+                video: { 
+                    facingMode: this.facingMode, // 'user' atau 'environment'
+                    width: { ideal: 1280 }, 
+                    height: { ideal: 960 } 
+                },
                 audio: false
-            });
+            };
+
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.video.srcObject = this.stream;
         } catch (error) {
             console.error('Camera access denied:', error);
-            alert('Please allow camera access.');
+            alert('Gagal mengakses kamera. Pastikan izin diberikan.');
         }
     }
 
+    // --- FUNGSI BARU: SWITCH CAMERA ---
+    async switchCamera() {
+        // Toggle mode: Jika sekarang 'user' ubah ke 'environment', dan sebaliknya
+        this.facingMode = (this.facingMode === 'user') ? 'environment' : 'user';
+        
+        // Setup ulang kamera dengan mode baru
+        await this.setupCamera();
+    }
+
     attachEventListeners() {
-        // --- 1. FITUR BARU: UPLOAD FOTO ---
+        // --- EVENT SWITCH CAMERA ---
+        if (this.switchCameraBtn) {
+            this.switchCameraBtn.addEventListener('click', () => this.switchCamera());
+        }
+
+        // --- UPLOAD FOTO ---
         this.uploadPhotoBtn.addEventListener('click', () => {
             this.photoFileInput.click();
         });
         this.photoFileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
 
-        // --- 2. FITUR BACKGROUND ---
+        // --- BACKGROUND ---
         document.querySelectorAll('.color-btn').forEach(btn => {
             if (!btn.classList.contains('upload-btn')) {
                 btn.addEventListener('click', (e) => this.handleBackgroundChange(e));
             }
         });
 
-        // Trigger upload background
         if (this.bgUploadBtnTrigger) {
             this.bgUploadBtnTrigger.addEventListener('click', () => {
                 this.bgUploadInput.click();
             });
         }
         
-        // Event File Background Dipilih (Crop)
         this.bgUploadInput.addEventListener('change', (e) => this.handleBgFileSelect(e));
 
         // Crop Controls
@@ -97,7 +125,7 @@ class PhotoBooth {
             this.bgUploadInput.value = ''; 
         });
 
-        // --- 3. TEMPLATE & ACTIONS ---
+        // --- TEMPLATE & ACTIONS ---
         document.querySelectorAll('.opt-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleTemplateChange(e));
         });
@@ -106,7 +134,7 @@ class PhotoBooth {
         this.previewBtn.addEventListener('click', () => this.showPreview());
         this.downloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
 
-        // --- 4. MODAL ---
+        // --- MODAL ---
         this.closePreviewBtn.addEventListener('click', () => this.closePreview());
         this.backBtn.addEventListener('click', () => this.closePreview());
         this.confirmDownloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
@@ -116,14 +144,17 @@ class PhotoBooth {
         });
     }
 
+    // ... (SISA KODE KE BAWAH TIDAK BERUBAH, SAMA SEPERTI SEBELUMNYA) ...
+    // Pastikan Anda menyalin kode helper di bawah ini (handlePhotoUpload, smartCropImage, dll)
+    // dari kode sebelumnya atau biarkan tetap ada di file Anda.
+    
     // ==========================================
     // LOGIKA UPLOAD FOTO (SMART CROP)
     // ==========================================
     handlePhotoUpload(event) {
-        // Cek limit
         if (this.photos.length >= this.maxPhotos) {
             alert(`Maximum ${this.maxPhotos} photos reached!`);
-            event.target.value = ''; // Reset input
+            event.target.value = ''; 
             return;
         }
 
@@ -134,50 +165,37 @@ class PhotoBooth {
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                // Proses gambar agar rasionya 4:3 (seperti kamera)
                 const processedData = this.smartCropImage(img);
-                
                 this.photos.push(processedData);
                 this.updatePhotoStripUI();
-                
-                // Aktifkan tombol
                 this.previewBtn.disabled = false;
                 this.downloadBtn.disabled = false;
             };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
-        
-        // Reset input agar bisa upload file yang sama berulang kali jika mau
         event.target.value = '';
     }
 
-    // Helper: Memotong tengah gambar (Center Crop) agar sesuai rasio Canvas
     smartCropImage(img) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-
-        // Kita ingin outputnya 4:3 (standar webcam)
         const targetWidth = 800;
         const targetHeight = 600;
         canvas.width = targetWidth;
         canvas.height = targetHeight;
 
-        // Hitung rasio
         const imgRatio = img.width / img.height;
         const targetRatio = targetWidth / targetHeight;
 
         let renderWidth, renderHeight, offsetX, offsetY;
 
-        // Logika Object-fit: Cover
         if (imgRatio > targetRatio) {
-            // Gambar lebih lebar dari target -> potong kiri kanan
             renderHeight = targetHeight;
             renderWidth = img.width * (targetHeight / img.height);
             offsetX = (targetWidth - renderWidth) / 2;
             offsetY = 0;
         } else {
-            // Gambar lebih tinggi dari target -> potong atas bawah
             renderWidth = targetWidth;
             renderHeight = img.height * (targetWidth / img.width);
             offsetX = 0;
@@ -185,7 +203,6 @@ class PhotoBooth {
         }
 
         ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
-        
         return canvas.toDataURL('image/png');
     }
 
@@ -256,24 +273,20 @@ class PhotoBooth {
 
         switch(bgType) {
             case 'solid-blue':
-                const blue = '#6c5ce7';
-                this.currentBackground = { type: 'solid-blue', data: blue };
-                this.photoStrip.style.background = blue;
+                this.currentBackground = { type: 'solid-blue', data: '#6c5ce7' };
+                this.photoStrip.style.background = '#6c5ce7';
                 break;
             case 'solid-red':
-                const red = '#ff7675';
-                this.currentBackground = { type: 'solid-red', data: red };
-                this.photoStrip.style.background = red;
+                this.currentBackground = { type: 'solid-red', data: '#ff7675' };
+                this.photoStrip.style.background = '#ff7675';
                 break;
             case 'solid-green':
-                const green = '#55efc4';
-                this.currentBackground = { type: 'solid-green', data: green };
-                this.photoStrip.style.background = green;
+                this.currentBackground = { type: 'solid-green', data: '#55efc4' };
+                this.photoStrip.style.background = '#55efc4';
                 break;
             case 'gradient-purple':
-                const gradient = 'linear-gradient(45deg, #a29bfe, #74b9ff)';
                 this.currentBackground = { type: 'gradient-purple', data: null };
-                this.photoStrip.style.background = gradient;
+                this.photoStrip.style.background = 'linear-gradient(45deg, #a29bfe, #74b9ff)';
                 break;
         }
     }
@@ -318,9 +331,17 @@ class PhotoBooth {
         this.previewCanvas.width = this.video.videoWidth;
         this.previewCanvas.height = this.video.videoHeight;
 
-        // Mirror effect capture
+        // Mirror effect HANYA JIKA kamera depan
         ctx.translate(this.previewCanvas.width, 0);
-        ctx.scale(-1, 1);
+        
+        // Jika kamera depan, mirror (-1). Jika belakang, normal (1)
+        if (this.facingMode === 'user') {
+            ctx.scale(-1, 1);
+        } else {
+            ctx.scale(1, 1); // Jangan mirror kamera belakang agar tulisan terbaca benar
+            ctx.translate(-this.previewCanvas.width, 0); // Koreksi posisi translate
+        }
+        
         ctx.drawImage(this.video, 0, 0);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -379,7 +400,6 @@ class PhotoBooth {
         this.previewBtn.disabled = true;
         this.downloadBtn.disabled = true;
         this.bgUploadInput.value = '';
-        // Reset file input photo juga
         this.photoFileInput.value = '';
     }
 
@@ -390,7 +410,6 @@ class PhotoBooth {
         const photos = this.photos;
 
         const stripWidth = 600; 
-        // UBAH INI: Margin kiri/kanan lebih tipis agar foto lebih lebar
         const photoMargin = 30;  
         const photoGap = 30;    
         const headerHeight = 150; 
@@ -424,7 +443,6 @@ class PhotoBooth {
                     img.onload = () => {
                         const yPosition = headerHeight + (index * (photoHeight + photoGap));
                         
-                        // UBAH INI: Bingkai putih lebih tipis (padding 10px, offset -5px)
                         ctx.fillStyle = "#FFFFFF";
                         ctx.fillRect(photoMargin - 5, yPosition - 5, photoWidth + 10, photoHeight + 10);
 
