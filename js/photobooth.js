@@ -12,12 +12,12 @@ class PhotoBooth {
         this.previewBtn = document.getElementById('preview-btn');
         this.downloadBtn = document.getElementById('download-btn');
         
-        // INPUTS BARU (Photo Upload & Switch Camera)
+        // INPUTS
         this.uploadPhotoBtn = document.getElementById('upload-photo-btn');
         this.photoFileInput = document.getElementById('photo-file-input');
         this.switchCameraBtn = document.getElementById('switch-camera-btn');
 
-        // Inputs & Sidebar
+        // Sidebar & Background
         this.photoStrip = document.getElementById('photo-strip');
         this.bgUploadInput = document.getElementById('bg-upload');
         this.bgUploadBtnTrigger = document.querySelector('.upload-btn');
@@ -28,7 +28,7 @@ class PhotoBooth {
         this.backBtn = document.getElementById('back-btn');
         this.confirmDownloadBtn = document.getElementById('confirm-download');
 
-        // Cropper Elements
+        // Cropper
         this.cropModal = document.getElementById('crop-modal');
         this.imageToCrop = document.getElementById('image-to-crop');
         this.cropConfirmBtn = document.getElementById('crop-confirm-btn');
@@ -39,13 +39,10 @@ class PhotoBooth {
         this.stream = null;
         this.photos = [];
         this.currentTemplate = 'single';
-        this.currentBackground = {
-            type: 'solid-blue',
-            data: '#6c5ce7' 
-        };
+        this.currentBackground = { type: 'solid-blue', data: '#6c5ce7' };
         this.maxPhotos = 1;
         
-        // STATE KAMERA: Default User (Depan)
+        // Default Facing Mode
         this.facingMode = 'user'; 
 
         this.init();
@@ -56,88 +53,111 @@ class PhotoBooth {
         this.attachEventListeners();
     }
 
-    // --- LOGIKA KAMERA YANG DIPERBAIKI ---
+    // ==========================================
+    // LOGIKA KAMERA (SAFARI FIX)
+    // ==========================================
     async setupCamera() {
-        // 1. Matikan kamera sebelumnya (PENTING AGAR BISA SWITCH)
+        // 1. Matikan stream lama (Wajib untuk switch camera)
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
         }
 
-        // 2. Tentukan Constraint (Aturan) Kamera
-        let videoConstraints = {};
-
+        // Konfigurasi dasar berdasarkan mode saat ini
+        let constraintsBase = {};
         if (this.facingMode === 'environment') {
-            // JIKA KAMERA BELAKANG:
-            // Kita pakai "exact" agar HP dipaksa pindah ke belakang.
-            // Tanpa "exact", kadang browser HP tetap diam di kamera depan.
-            videoConstraints = { facingMode: { exact: 'environment' } };
+            constraintsBase = { exact: 'environment' };
         } else {
-            // JIKA KAMERA DEPAN:
-            videoConstraints = { facingMode: 'user' };
+            constraintsBase = 'user';
         }
 
-        // Tambahkan resolusi ideal
-        videoConstraints.width = { ideal: 1280 };
-        videoConstraints.height = { ideal: 960 };
-
+        // TAHAP 1: Coba Ideal (Kamera + Resolusi Bagus)
+        // Ini biasanya jalan di Chrome/Android/Desktop
         try {
-            // Coba nyalakan kamera dengan aturan di atas
-            this.stream = await navigator.mediaDevices.getUserMedia({ 
-                video: videoConstraints, 
-                audio: false 
-            });
-            this.video.srcObject = this.stream;
-        } catch (error) {
-            console.warn('Gagal dengan constraint exact, mencoba mode fallback...', error);
+            const constraints = {
+                video: {
+                    facingMode: constraintsBase,
+                    width: { ideal: 1280 },
+                    height: { ideal: 960 }
+                },
+                audio: false
+            };
             
-            // FALLBACK: Jika di Laptop/PC tidak ada kamera belakang (error Overconstrained),
-            // kita coba nyalakan kamera apa saja yang ada tanpa "exact".
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.video.srcObject = this.stream;
+            
+        } catch (error) {
+            console.warn('Gagal Tahap 1 (Resolusi+Mode), mencoba mode Safari...', error);
+
+            // TAHAP 2: SAFARI FALLBACK
+            // Safari sering error Overconstrained jika kita minta resolusi spesifik di kamera belakang.
+            // Solusinya: Hapus constraint resolusi, biarkan Safari memilih sendiri.
             try {
-                this.stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: this.facingMode }, // Hapus "exact"
-                    audio: false 
-                });
+                const constraintsSafari = {
+                    video: {
+                        facingMode: constraintsBase // HANYA facing mode, tanpa width/height
+                    },
+                    audio: false
+                };
+
+                this.stream = await navigator.mediaDevices.getUserMedia(constraintsSafari);
                 this.video.srcObject = this.stream;
-            } catch (retryError) {
-                console.error('Kamera tetap error:', retryError);
-                alert('Gagal mengakses kamera. Pastikan izin diberikan dan perangkat mendukung.');
+
+            } catch (errorSafari) {
+                console.warn('Gagal Tahap 2 (Exact Mode), mencoba mode kompatibilitas...', errorSafari);
+
+                // TAHAP 3: LAST RESORT
+                // Hapus kata kunci 'exact'. Ini tidak menjamin kamera belakang, 
+                // tapi setidaknya kamera akan nyala daripada error.
+                try {
+                    const constraintsBasic = {
+                        video: {
+                            facingMode: this.facingMode // Tanpa { exact: ... }
+                        },
+                        audio: false
+                    };
+                    this.stream = await navigator.mediaDevices.getUserMedia(constraintsBasic);
+                    this.video.srcObject = this.stream;
+                } catch (finalError) {
+                    console.error('Kamera gagal total:', finalError);
+                    alert('Gagal mengakses kamera. Silakan cek izin browser Safari Anda.');
+                }
             }
         }
     }
 
     async switchCamera() {
-        // Toggle: Jika User -> Environment, Jika Environment -> User
+        // Toggle User <-> Environment
         this.facingMode = (this.facingMode === 'user') ? 'environment' : 'user';
         await this.setupCamera();
     }
 
+    // ==========================================
+    // EVENT LISTENERS
+    // ==========================================
     attachEventListeners() {
-        // --- 1. SWITCH CAMERA & UPLOAD ---
+        // Switch Camera
         if (this.switchCameraBtn) {
             this.switchCameraBtn.addEventListener('click', () => this.switchCamera());
         }
 
-        this.uploadPhotoBtn.addEventListener('click', () => {
-            this.photoFileInput.click();
-        });
+        // Upload Foto
+        this.uploadPhotoBtn.addEventListener('click', () => this.photoFileInput.click());
         this.photoFileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
 
-        // --- 2. BACKGROUND ---
+        // Background Color
         document.querySelectorAll('.color-btn').forEach(btn => {
             if (!btn.classList.contains('upload-btn')) {
                 btn.addEventListener('click', (e) => this.handleBackgroundChange(e));
             }
         });
 
+        // Background Upload
         if (this.bgUploadBtnTrigger) {
-            this.bgUploadBtnTrigger.addEventListener('click', () => {
-                this.bgUploadInput.click();
-            });
+            this.bgUploadBtnTrigger.addEventListener('click', () => this.bgUploadInput.click());
         }
-        
         this.bgUploadInput.addEventListener('change', (e) => this.handleBgFileSelect(e));
 
-        // Crop Controls
+        // Cropper
         this.cropConfirmBtn.addEventListener('click', () => this.handleCropConfirm());
         this.closeCropBtn.addEventListener('click', () => {
             this.cropModal.style.display = 'none';
@@ -145,7 +165,7 @@ class PhotoBooth {
             this.bgUploadInput.value = ''; 
         });
 
-        // --- 3. TEMPLATE & ACTIONS ---
+        // Template & Actions
         document.querySelectorAll('.opt-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleTemplateChange(e));
         });
@@ -154,18 +174,18 @@ class PhotoBooth {
         this.previewBtn.addEventListener('click', () => this.showPreview());
         this.downloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
 
-        // --- 4. MODAL ---
+        // Modal Controls
         this.closePreviewBtn.addEventListener('click', () => this.closePreview());
         this.backBtn.addEventListener('click', () => this.closePreview());
         this.confirmDownloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
-        
         window.addEventListener('click', (e) => {
             if (e.target === this.previewModal) this.closePreview();
         });
     }
 
-    // ... Helper Functions (Smart Crop, Background, dll) tetap sama ...
-
+    // ==========================================
+    // LOGIKA UPLOAD FOTO
+    // ==========================================
     handlePhotoUpload(event) {
         if (this.photos.length >= this.maxPhotos) {
             alert(`Maximum ${this.maxPhotos} photos reached!`);
@@ -221,6 +241,9 @@ class PhotoBooth {
         return canvas.toDataURL('image/png');
     }
 
+    // ==========================================
+    // LOGIKA BACKGROUND (CROPPER)
+    // ==========================================
     handleBgFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -229,19 +252,12 @@ class PhotoBooth {
         reader.onload = (e) => {
             this.imageToCrop.src = e.target.result;
             this.cropModal.style.display = 'flex';
-
             if (this.cropper) this.cropper.destroy();
 
             this.cropper = new Cropper(this.imageToCrop, {
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 0.8,
-                restore: false,
-                guides: true,
-                center: true,
-                highlight: false,
-                cropBoxMovable: true,
-                cropBoxResizable: true,
+                viewMode: 1, dragMode: 'move', autoCropArea: 0.8,
+                restore: false, guides: true, center: true,
+                highlight: false, cropBoxMovable: true, cropBoxResizable: true,
                 toggleDragModeOnDblclick: false,
             });
         };
@@ -252,13 +268,11 @@ class PhotoBooth {
         if (!this.cropper) return;
         const canvas = this.cropper.getCroppedCanvas();
         if (!canvas) return;
-
+        
         const croppedImageURL = canvas.toDataURL('image/jpeg');
-
         const img = new Image();
         img.onload = () => {
             this.currentBackground = { type: 'custom', data: img };
-            
             this.photoStrip.style.background = 'none';
             this.photoStrip.style.backgroundImage = `url(${croppedImageURL})`;
             this.photoStrip.style.backgroundSize = 'cover';
@@ -277,10 +291,8 @@ class PhotoBooth {
     handleBackgroundChange(event) {
         const btn = event.currentTarget;
         const bgType = btn.dataset.bg;
-
         document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
         this.photoStrip.style.backgroundImage = 'none'; 
 
         switch(bgType) {
@@ -303,16 +315,16 @@ class PhotoBooth {
         }
     }
 
+    // ==========================================
+    // LOGIKA TEMPLATE & CAPTURE
+    // ==========================================
     handleTemplateChange(event) {
         const btn = event.currentTarget;
         const template = btn.dataset.template;
-
         document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
         this.currentTemplate = template;
         this.setMaxPhotos();
-
         if (this.photos.length > 0) {
             if(confirm('Changing template will reset photos. Continue?')) {
                 this.resetPhotos();
@@ -340,25 +352,25 @@ class PhotoBooth {
         this.previewCanvas.width = this.video.videoWidth;
         this.previewCanvas.height = this.video.videoHeight;
 
-        ctx.translate(this.previewCanvas.width, 0);
-        
+        // Reset Transform
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
         // LOGIKA MIRROR:
-        // Kamera Depan ('user') -> Mirror (-1)
-        // Kamera Belakang ('environment') -> Normal (1)
+        // Jika Kamera Depan -> Mirror (Balik Horizontal)
+        // Jika Kamera Belakang -> Normal
         if (this.facingMode === 'user') {
+            ctx.translate(this.previewCanvas.width, 0);
             ctx.scale(-1, 1);
-        } else {
-            ctx.scale(1, 1);
-            ctx.translate(-this.previewCanvas.width, 0);
-        }
+        } 
         
         ctx.drawImage(this.video, 0, 0);
+        
+        // Kembalikan transform ke normal agar proses selanjutnya aman
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         const photoData = this.previewCanvas.toDataURL('image/png');
         this.photos.push(photoData);
         this.updatePhotoStripUI();
-
         this.previewBtn.disabled = false;
         this.downloadBtn.disabled = false;
     }
@@ -373,21 +385,16 @@ class PhotoBooth {
                 </div>`;
             return;
         }
-
         this.photos.forEach((photoData, index) => {
             const photoContainer = document.createElement('div');
             photoContainer.className = 'captured-photo';
-
             const img = document.createElement('img');
             img.src = photoData;
-
             const controls = document.createElement('div');
             controls.className = 'photo-controls';
-
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '✕';
             deleteBtn.addEventListener('click', () => this.deletePhoto(index));
-
             controls.appendChild(deleteBtn);
             photoContainer.appendChild(img);
             photoContainer.appendChild(controls);
@@ -415,12 +422,11 @@ class PhotoBooth {
 
     generatePhotoStrip() {
         if (this.photos.length === 0) return null;
-
         const ctx = this.finalCanvas.getContext('2d');
         const photos = this.photos;
 
         const stripWidth = 600; 
-        const photoMargin = 30;  
+        const photoMargin = 30; // Bingkai tipis
         const photoGap = 30;    
         const headerHeight = 150; 
         const footerHeight = 100; 
@@ -453,6 +459,7 @@ class PhotoBooth {
                     img.onload = () => {
                         const yPosition = headerHeight + (index * (photoHeight + photoGap));
                         
+                        // Bingkai putih tipis
                         ctx.fillStyle = "#FFFFFF";
                         ctx.fillRect(photoMargin - 5, yPosition - 5, photoWidth + 10, photoHeight + 10);
 
@@ -468,7 +475,6 @@ class PhotoBooth {
                             ctx.font = `30px ${fontFamily}`;
                             ctx.textAlign = 'center';
                             ctx.fillText(dateText, stripWidth / 2, footerYCenter);
-
                             resolve();
                         }
                     };
@@ -482,18 +488,15 @@ class PhotoBooth {
     drawBackground(ctx, width, height) {
         switch(this.currentBackground.type) {
             case 'solid-blue':
+                ctx.fillStyle = this.currentBackground.data; ctx.fillRect(0, 0, width, height); break;
             case 'solid-red':
+                ctx.fillStyle = this.currentBackground.data; ctx.fillRect(0, 0, width, height); break;
             case 'solid-green':
-                ctx.fillStyle = this.currentBackground.data;
-                ctx.fillRect(0, 0, width, height);
-                break;
+                ctx.fillStyle = this.currentBackground.data; ctx.fillRect(0, 0, width, height); break;
             case 'gradient-purple':
                 const gradient = ctx.createLinearGradient(0, 0, width, height);
-                gradient.addColorStop(0, '#a29bfe');
-                gradient.addColorStop(1, '#74b9ff');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, width, height);
-                break;
+                gradient.addColorStop(0, '#a29bfe'); gradient.addColorStop(1, '#74b9ff');
+                ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height); break;
             case 'custom':
                 if (this.currentBackground.data) {
                     const img = this.currentBackground.data;
@@ -501,8 +504,7 @@ class PhotoBooth {
                     const x = (width / 2) - (img.width / 2) * scale;
                     const y = (height / 2) - (img.height / 2) * scale;
                     ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-                }
-                break;
+                } break;
         }
     }
 
