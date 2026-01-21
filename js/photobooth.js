@@ -42,8 +42,11 @@ class PhotoBooth {
         this.currentBackground = { type: 'solid-blue', data: '#6c5ce7' };
         this.maxPhotos = 1;
         
-        // Default Facing Mode (Depan)
+        // State Kamera
         this.facingMode = 'user'; 
+
+        // STATE BARU: Menentukan apa yang sedang di-crop ('background' atau 'photo')
+        this.currentCropType = null; 
 
         this.init();
     }
@@ -54,15 +57,14 @@ class PhotoBooth {
     }
 
     // ==========================================
-    // LOGIKA KAMERA (FIX MIRROR & SAFARI)
+    // LOGIKA KAMERA (SAFARI SAFE)
     // ==========================================
     async setupCamera() {
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
         }
 
-        // Atur Style Mirroring Video secara Dinamis
-        // Depan = Mirror (scaleX -1), Belakang = Normal (none)
+        // Mirroring CSS: Depan = Mirror, Belakang = Normal
         if (this.facingMode === 'user') {
             this.video.style.transform = 'scaleX(-1)';
         } else {
@@ -77,7 +79,7 @@ class PhotoBooth {
         }
 
         try {
-            // TAHAP 1: Ideal
+            // Tahap 1: Ideal
             const constraints = {
                 video: {
                     facingMode: constraintsBase,
@@ -86,27 +88,22 @@ class PhotoBooth {
                 },
                 audio: false
             };
-            
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.video.srcObject = this.stream;
-            
         } catch (error) {
-            console.warn('Gagal Tahap 1, mencoba mode fallback Safari...', error);
-
+            console.warn('Gagal Tahap 1, mencoba mode fallback...', error);
             try {
-                // TAHAP 2: Safari Fallback (Tanpa Resolusi)
+                // Tahap 2: Safari Fallback
                 const constraintsSafari = {
                     video: { facingMode: constraintsBase },
                     audio: false
                 };
                 this.stream = await navigator.mediaDevices.getUserMedia(constraintsSafari);
                 this.video.srcObject = this.stream;
-
             } catch (errorSafari) {
                 console.warn('Gagal Tahap 2, mencoba mode kompatibilitas...', errorSafari);
-
                 try {
-                    // TAHAP 3: Last Resort (Hapus 'exact')
+                    // Tahap 3: Last Resort
                     const constraintsBasic = {
                         video: { facingMode: this.facingMode },
                         audio: false
@@ -130,31 +127,38 @@ class PhotoBooth {
     // EVENT LISTENERS
     // ==========================================
     attachEventListeners() {
+        // Switch Camera
         if (this.switchCameraBtn) {
             this.switchCameraBtn.addEventListener('click', () => this.switchCamera());
         }
 
+        // Upload Foto (Memicu Crop Photo)
         this.uploadPhotoBtn.addEventListener('click', () => this.photoFileInput.click());
         this.photoFileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
 
+        // Background Color
         document.querySelectorAll('.color-btn').forEach(btn => {
             if (!btn.classList.contains('upload-btn')) {
                 btn.addEventListener('click', (e) => this.handleBackgroundChange(e));
             }
         });
 
+        // Background Upload (Memicu Crop Background)
         if (this.bgUploadBtnTrigger) {
             this.bgUploadBtnTrigger.addEventListener('click', () => this.bgUploadInput.click());
         }
         this.bgUploadInput.addEventListener('change', (e) => this.handleBgFileSelect(e));
 
+        // Global Crop Controls
         this.cropConfirmBtn.addEventListener('click', () => this.handleCropConfirm());
         this.closeCropBtn.addEventListener('click', () => {
             this.cropModal.style.display = 'none';
             if(this.cropper) this.cropper.destroy();
             this.bgUploadInput.value = ''; 
+            this.photoFileInput.value = '';
         });
 
+        // Template & Actions
         document.querySelectorAll('.opt-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleTemplateChange(e));
         });
@@ -163,6 +167,7 @@ class PhotoBooth {
         this.previewBtn.addEventListener('click', () => this.showPreview());
         this.downloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
 
+        // Modal Controls
         this.closePreviewBtn.addEventListener('click', () => this.closePreview());
         this.backBtn.addEventListener('click', () => this.closePreview());
         this.confirmDownloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
@@ -172,8 +177,10 @@ class PhotoBooth {
     }
 
     // ==========================================
-    // LOGIKA UPLOAD FOTO
+    // LOGIKA UPLOAD & CROP (FOTO & BACKGROUND)
     // ==========================================
+    
+    // 1. Handle Upload FOTO untuk Frame
     handlePhotoUpload(event) {
         if (this.photos.length >= this.maxPhotos) {
             alert(`Maximum ${this.maxPhotos} photos reached!`);
@@ -184,98 +191,94 @@ class PhotoBooth {
         const file = event.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const processedData = this.smartCropImage(img);
-                this.photos.push(processedData);
-                this.updatePhotoStripUI();
-                this.previewBtn.disabled = false;
-                this.downloadBtn.disabled = false;
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+        // Tandai bahwa kita sedang crop FOTO
+        this.currentCropType = 'photo';
+        this.openCropper(file, 4/3); // Rasio 4:3 agar pas di frame
+        
         event.target.value = '';
     }
 
-    smartCropImage(img) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const targetWidth = 800;
-        const targetHeight = 600;
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-
-        const imgRatio = img.width / img.height;
-        const targetRatio = targetWidth / targetHeight;
-
-        let renderWidth, renderHeight, offsetX, offsetY;
-
-        if (imgRatio > targetRatio) {
-            renderHeight = targetHeight;
-            renderWidth = img.width * (targetHeight / img.height);
-            offsetX = (targetWidth - renderWidth) / 2;
-            offsetY = 0;
-        } else {
-            renderWidth = targetWidth;
-            renderHeight = img.height * (targetWidth / img.width);
-            offsetX = 0;
-            offsetY = (targetHeight - renderHeight) / 2;
-        }
-
-        ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
-        return canvas.toDataURL('image/png');
-    }
-
-    // ==========================================
-    // LOGIKA BACKGROUND (CROPPER)
-    // ==========================================
+    // 2. Handle Upload BACKGROUND
     handleBgFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
 
+        // Tandai bahwa kita sedang crop BACKGROUND
+        this.currentCropType = 'background';
+        this.openCropper(file, NaN); // NaN = Bebas (Free Ratio)
+        
+        event.target.value = '';
+    }
+
+    // Helper: Membuka Modal Cropper
+    openCropper(file, aspectRatio) {
         const reader = new FileReader();
         reader.onload = (e) => {
             this.imageToCrop.src = e.target.result;
             this.cropModal.style.display = 'flex';
+
             if (this.cropper) this.cropper.destroy();
 
             this.cropper = new Cropper(this.imageToCrop, {
-                viewMode: 1, dragMode: 'move', autoCropArea: 0.8,
-                restore: false, guides: true, center: true,
-                highlight: false, cropBoxMovable: true, cropBoxResizable: true,
+                aspectRatio: aspectRatio, // 4:3 untuk foto, Free untuk background
+                viewMode: 1, 
+                dragMode: 'move', 
+                autoCropArea: 0.8,
+                restore: false, 
+                guides: true, 
+                center: true,
+                highlight: false, 
+                cropBoxMovable: true, 
+                cropBoxResizable: true,
                 toggleDragModeOnDblclick: false,
             });
         };
         reader.readAsDataURL(file);
     }
 
+    // 3. Handle Konfirmasi Crop (Tombol Centang)
     handleCropConfirm() {
         if (!this.cropper) return;
+        
         const canvas = this.cropper.getCroppedCanvas();
         if (!canvas) return;
-        
+
+        // Convert hasil crop ke Gambar (JPEG)
         const croppedImageURL = canvas.toDataURL('image/jpeg');
-        const img = new Image();
-        img.onload = () => {
-            this.currentBackground = { type: 'custom', data: img };
-            this.photoStrip.style.background = 'none';
-            this.photoStrip.style.backgroundImage = `url(${croppedImageURL})`;
-            this.photoStrip.style.backgroundSize = 'cover';
-            this.photoStrip.style.backgroundPosition = 'center';
 
-            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-            if (this.bgUploadBtnTrigger) this.bgUploadBtnTrigger.classList.add('active');
+        if (this.currentCropType === 'photo') {
+            // === JIKA CROP FOTO ===
+            this.photos.push(croppedImageURL);
+            this.updatePhotoStripUI();
+            this.previewBtn.disabled = false;
+            this.downloadBtn.disabled = false;
 
-            this.cropModal.style.display = 'none';
-            this.cropper.destroy();
-            this.cropper = null;
-        };
-        img.src = croppedImageURL;
+        } else if (this.currentCropType === 'background') {
+            // === JIKA CROP BACKGROUND ===
+            const img = new Image();
+            img.onload = () => {
+                this.currentBackground = { type: 'custom', data: img };
+                this.photoStrip.style.background = 'none';
+                this.photoStrip.style.backgroundImage = `url(${croppedImageURL})`;
+                this.photoStrip.style.backgroundSize = 'cover';
+                this.photoStrip.style.backgroundPosition = 'center';
+
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                if (this.bgUploadBtnTrigger) this.bgUploadBtnTrigger.classList.add('active');
+            };
+            img.src = croppedImageURL;
+        }
+
+        // Tutup Modal
+        this.cropModal.style.display = 'none';
+        this.cropper.destroy();
+        this.cropper = null;
+        this.currentCropType = null; // Reset status
     }
 
+    // ==========================================
+    // LOGIKA BACKGROUND (WARNA)
+    // ==========================================
     handleBackgroundChange(event) {
         const btn = event.currentTarget;
         const bgType = btn.dataset.bg;
@@ -340,20 +343,15 @@ class PhotoBooth {
         this.previewCanvas.width = this.video.videoWidth;
         this.previewCanvas.height = this.video.videoHeight;
 
-        // Reset Transform
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // LOGIKA MIRROR HASIL FOTO:
-        // Jika mode 'user' (depan), maka kita mirror hasilnya.
-        // Jika mode 'environment' (belakang), biarkan normal.
+        // Mirroring Logic for Capture
         if (this.facingMode === 'user') {
             ctx.translate(this.previewCanvas.width, 0);
             ctx.scale(-1, 1);
         }
         
         ctx.drawImage(this.video, 0, 0);
-        
-        // Kembalikan ke normal untuk proses selanjutnya
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         const photoData = this.previewCanvas.toDataURL('image/png');
@@ -408,13 +406,16 @@ class PhotoBooth {
         this.photoFileInput.value = '';
     }
 
+    // ==========================================
+    // GENERATE RESULT
+    // ==========================================
     generatePhotoStrip() {
         if (this.photos.length === 0) return null;
         const ctx = this.finalCanvas.getContext('2d');
         const photos = this.photos;
 
         const stripWidth = 600; 
-        const photoMargin = 30;
+        const photoMargin = 30; // Bingkai tipis
         const photoGap = 30;    
         const headerHeight = 150; 
         const footerHeight = 100; 
@@ -447,7 +448,7 @@ class PhotoBooth {
                     img.onload = () => {
                         const yPosition = headerHeight + (index * (photoHeight + photoGap));
                         
-                        // Bingkai putih
+                        // Bingkai Putih Tipis
                         ctx.fillStyle = "#FFFFFF";
                         ctx.fillRect(photoMargin - 5, yPosition - 5, photoWidth + 10, photoHeight + 10);
 
