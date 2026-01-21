@@ -28,7 +28,7 @@ class PhotoBooth {
         this.backBtn = document.getElementById('back-btn');
         this.confirmDownloadBtn = document.getElementById('confirm-download');
 
-        // Cropper
+        // Cropper Elements
         this.cropModal = document.getElementById('crop-modal');
         this.imageToCrop = document.getElementById('image-to-crop');
         this.cropConfirmBtn = document.getElementById('crop-confirm-btn');
@@ -191,9 +191,10 @@ class PhotoBooth {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Tandai bahwa kita sedang crop FOTO
+        // TANDAI: Sedang crop Foto
         this.currentCropType = 'photo';
-        this.openCropper(file, 4/3); // Rasio 4:3 agar pas di frame
+        // Buka cropper dengan rasio TERKUNCI 4:3 (agar pas di frame)
+        this.openCropper(file, 4/3); 
         
         event.target.value = '';
     }
@@ -203,9 +204,10 @@ class PhotoBooth {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Tandai bahwa kita sedang crop BACKGROUND
+        // TANDAI: Sedang crop Background
         this.currentCropType = 'background';
-        this.openCropper(file, NaN); // NaN = Bebas (Free Ratio)
+        // Buka cropper dengan rasio BEBAS (NaN)
+        this.openCropper(file, NaN); 
         
         event.target.value = '';
     }
@@ -220,7 +222,7 @@ class PhotoBooth {
             if (this.cropper) this.cropper.destroy();
 
             this.cropper = new Cropper(this.imageToCrop, {
-                aspectRatio: aspectRatio, // 4:3 untuk foto, Free untuk background
+                aspectRatio: aspectRatio, // Ini kunci perbedaannya
                 viewMode: 1, 
                 dragMode: 'move', 
                 autoCropArea: 0.8,
@@ -248,6 +250,7 @@ class PhotoBooth {
 
         if (this.currentCropType === 'photo') {
             // === JIKA CROP FOTO ===
+            // Masukkan ke array photos
             this.photos.push(croppedImageURL);
             this.updatePhotoStripUI();
             this.previewBtn.disabled = false;
@@ -255,6 +258,7 @@ class PhotoBooth {
 
         } else if (this.currentCropType === 'background') {
             // === JIKA CROP BACKGROUND ===
+            // Set sebagai background
             const img = new Image();
             img.onload = () => {
                 this.currentBackground = { type: 'custom', data: img };
