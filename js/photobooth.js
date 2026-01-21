@@ -445,14 +445,22 @@ class PhotoBooth {
     }
 
     showPreview() {
-        if (this.photos.length === 0) return;
-        this.generatePhotoStrip().then(() => {
-            const ctx = this.previewDisplay.getContext('2d');
-            this.previewDisplay.width = this.finalCanvas.width;
-            this.previewDisplay.height = this.finalCanvas.height;
-            ctx.drawImage(this.finalCanvas, 0, 0);
-            this.previewModal.style.display = 'flex';
-        });
+            if (this.photos.length === 0) return;
+            
+            // Generate strip foto terlebih dahulu
+            this.generatePhotoStrip().then(() => {
+                const ctx = this.previewDisplay.getContext('2d');
+                
+                // PENTING: Set ukuran canvas preview SAMA PERSIS dengan hasil generate
+                this.previewDisplay.width = this.finalCanvas.width;
+                this.previewDisplay.height = this.finalCanvas.height;
+                
+                // Gambar hasil ke canvas preview
+                ctx.drawImage(this.finalCanvas, 0, 0);
+                
+                // Tampilkan Modal
+                this.previewModal.style.display = 'flex';
+            });
     }
 
     closePreview() { this.previewModal.style.display = 'none'; }
