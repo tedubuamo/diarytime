@@ -172,85 +172,117 @@ video {
 .action-btn.download { background: var(--primary); color: white; }
 .action-btn:disabled { opacity: 0.5; }
 
-/* --- MODAL (Z-INDEX TINGGI) --- */
-/* --- MODAL (FIX RESPONSIVE & SCROLL) --- */
+/* --- MODAL FIX (RESPONSIF & SCROLLABLE) --- */
 .modal {
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.9); /* Latar belakang lebih gelap */
-    backdrop-filter: blur(8px);
-    display: none; 
-    align-items: center; 
+    background: rgba(0, 0, 0, 0.9); /* Latar gelap agar fokus */
+    backdrop-filter: blur(5px);
+    display: none;
+    align-items: center;
     justify-content: center;
-    z-index: 10000;
-    padding: 20px; /* Jarak aman dari pinggir layar HP */
+    z-index: 99999; /* Paling atas */
+    padding: 10px; /* Jarak sedikit dari pinggir layar */
 }
 
 .modal-box {
-    background: white; 
-    border-radius: 20px;
+    background: white;
     width: 100%;
-    max-width: 500px; /* Maksimal lebar di desktop */
-    max-height: 90vh; /* Maksimal tinggi 90% layar */
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; /* Header & Footer tetap, konten di tengah scroll */
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    max-width: 500px; /* Lebar maksimal di desktop */
+    max-height: 85vh; /* Tinggi maksimal 85% layar HP agar tombol tidak hilang */
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column; /* Susun Header - Isi - Footer ke bawah */
+    overflow: hidden; /* Kunci agar box tidak melebar */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: relative;
 }
 
-.modal-top { 
-    padding: 20px;
+/* Header Modal (Tetap di atas) */
+.modal-top {
+    padding: 15px;
     border-bottom: 1px solid #eee;
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
     background: #fff;
-    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0; /* Jangan menyusut */
 }
 
+.modal-top h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+/* Isi Modal (Area Gambar yang Bisa Scroll) */
 .modal-content {
-    padding: 20px;
-    overflow-y: auto; /* KUNCI: Agar bisa di-scroll vertikal */
-    flex-grow: 1; /* Mengisi sisa ruang tengah */
+    padding: 15px;
+    background: #f0f0f0;
+    overflow-y: auto; /* Scroll vertikal AKTIF di sini */
+    flex-grow: 1; /* Mengisi sisa ruang kosong */
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    background: #f8f9fa;
+    align-items: flex-start; /* Gambar mulai dari atas */
+    -webkit-overflow-scrolling: touch; /* Scroll mulus di iPhone */
 }
 
-/* Agar Canvas Preview Responsif di HP */
-.modal-content canvas { 
+/* KUNCI PERBAIKAN GAMBAR: */
+#preview-display {
     width: 100% !important; /* Paksa lebar mengikuti layar HP */
+    max-width: 100%; 
     height: auto !important; /* Tinggi menyesuaikan proporsi */
-    max-width: 100%;
-    border-radius: 8px; 
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     display: block;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    border-radius: 4px;
 }
 
-.modal-bottom { 
-    padding: 20px;
+/* Footer Modal (Tetap di bawah) */
+.modal-bottom {
+    padding: 15px;
     border-top: 1px solid #eee;
-    display: flex; 
-    gap: 10px; 
-    justify-content: flex-end; 
     background: #fff;
-    z-index: 2;
+    display: flex;
+    justify-content: space-between; /* Tombol kiri dan kanan */
+    gap: 10px;
+    flex-shrink: 0; /* Jangan menyusut */
 }
 
-.text-btn { background: none; border: none; cursor: pointer; font-weight: 600; color: #636e72; }
+/* Tombol Tutup & Download */
+.text-btn {
+    background: #f1f2f6;
+    color: #333;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.shutter-btn.small {
+    padding: 10px 20px;
+    font-size: 1rem;
+}
 
 /* Modal Crop Khusus */
-.crop-box { max-width: 600px; }
-.crop-container {
-    height: 400px; background: #333; position: relative;
-    border-radius: 8px; overflow: hidden;
+.crop-box {
+    max-width: 600px;
 }
-#image-to-crop { display: block; max-width: 100%; }
-.full-width { width: 100%; margin-top: 10px; }
+.crop-container {
+    height: 60vh; /* Tinggi area crop menyesuaikan layar */
+    background: #333;
+    position: relative;
+}
+#image-to-crop {
+    display: block;
+    max-width: 100%;
+}
+.full-width {
+    width: 100%;
+}
 
 @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
