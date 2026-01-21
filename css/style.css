@@ -200,7 +200,50 @@ video {
 
 @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+/* --- PERBAIKAN RESPONSIF HP (Fix Posisi Tengah) --- */
 @media (max-width: 768px) {
-    .workspace { grid-template-columns: 1fr; }
-    .strip-zone { height: auto; min-height: 300px; }
+    /* Padding lebih kecil agar muat */
+    .main-container {
+        padding: 20px 15px; 
+    }
+
+    /* Ubah layout jadi 1 kolom tumpuk ke bawah & RATA TENGAH */
+    .workspace {
+        grid-template-columns: 1fr;
+        justify-items: center; /* Tengahkan item grid */
+        gap: 25px;
+    }
+
+    /* Paksa Zona Kamera Rata Tengah */
+    .camera-zone {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Tengahkan Video & Tombol */
+    }
+
+    /* Batasi lebar maksimal agar tidak terlalu lebar di Tablet */
+    .live-feed-wrapper, 
+    .camera-actions, 
+    .controls-wrapper, 
+    .strip-zone {
+        width: 100%;
+        max-width: 450px; /* Lebar maksimal elemen */
+    }
+
+    /* Control Panel tumpuk ke bawah */
+    .controls-wrapper {
+        grid-template-columns: 1fr;
+        padding: 15px;
+    }
+    
+    /* Tengahkan Teks dan Tombol Pilihan */
+    .control-group h3 { text-align: center; }
+    .options-grid, .color-options { justify-content: center; }
+
+    /* Hasil Strip menyesuaikan tinggi */
+    .strip-zone {
+        height: auto;
+        min-height: 300px;
+    }
 }
