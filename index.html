@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiaryTime Photobooth</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <h1>📸 diarytime</h1>
+            <p>Capture your aesthetic moments</p>
+        </header>
+
+        <div class="workspace">
+            <div class="camera-zone">
+                <div class="live-feed-wrapper">
+                    <video id="camera" autoplay playsinline></video>
+                    <canvas id="preview-canvas" style="display: none;"></canvas>
+                </div>
+
+                <div class="camera-actions">
+                    <button id="capture-btn" class="shutter-btn">
+                        <span class="btn-icon">📸</span>
+                        <span class="btn-text">TAKE PHOTO</span>
+                    </button>
+
+                    <button id="upload-photo-btn" class="upload-action-btn" title="Pick from Gallery">
+                        📂
+                    </button>
+                    <input type="file" id="photo-file-input" accept="image/*" hidden>
+                </div>
+
+                <div class="controls-wrapper">
+                    <div class="control-group">
+                        <h3>Layout</h3>
+                        <div class="options-grid">
+                            <button class="opt-btn active" data-template="single">1 Frame</button>
+                            <button class="opt-btn" data-template="three-vertical">3 Frames</button>
+                            <button class="opt-btn" data-template="four-vertical">4 Frames</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>Mood (Bg Color)</h3>
+                        <div class="color-options">
+                            <button class="color-btn active" data-bg="solid-blue" style="background: #6c5ce7;"></button>
+                            <button class="color-btn" data-bg="solid-red" style="background: #ff7675;"></button>
+                            <button class="color-btn" data-bg="solid-green" style="background: #55efc4;"></button>
+                            <button class="color-btn" data-bg="gradient-purple" style="background: linear-gradient(45deg, #a29bfe, #74b9ff);"></button>
+                            <button class="color-btn upload-btn" data-bg="upload">🖼️
+                                <input type="file" id="bg-upload" accept="image/*" hidden>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="strip-zone">
+                <div class="strip-header">Your Result</div>
+                <div class="photo-strip-preview" id="photo-strip">
+                    <div class="empty-state">
+                        <span>Ready?</span>
+                        <small>Photos will appear here</small>
+                    </div>
+                </div>
+                <div class="final-actions">
+                    <button id="preview-btn" class="action-btn" disabled>View Full</button>
+                    <button id="download-btn" class="action-btn download" disabled>Download HQ</button>
+                    <button id="reset-btn" class="action-btn secondary">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="final-canvas" style="display: none;"></canvas>
+
+    <div id="preview-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-top">
+                <h3>Preview</h3>
+                <button id="close-preview">✕</button>
+            </div>
+            <div class="modal-content">
+                <canvas id="preview-display"></canvas>
+            </div>
+            <div class="modal-bottom">
+                <button id="back-btn" class="text-btn">Close</button>
+                <button id="confirm-download" class="shutter-btn small">Download Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="crop-modal" class="modal" style="display: none;">
+        <div class="modal-box crop-box">
+            <div class="modal-top">
+                <h3>Adjust Background</h3>
+                <button id="close-crop">✕</button>
+            </div>
+            <div class="crop-container">
+                <img id="image-to-crop" src="" style="max-width: 100%;">
+            </div>
+            <div class="modal-bottom">
+                <button id="crop-confirm-btn" class="shutter-btn full-width">✅ Use This Crop</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/photobooth.js"></script>
+</body>
+</html>
