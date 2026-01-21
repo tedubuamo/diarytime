@@ -42,7 +42,7 @@ class PhotoBooth {
         this.currentBackground = { type: 'solid-blue', data: '#6c5ce7' };
         this.maxPhotos = 1;
         
-        // Default Facing Mode
+        // Default Facing Mode (Depan)
         this.facingMode = 'user'; 
 
         this.init();
@@ -54,15 +54,21 @@ class PhotoBooth {
     }
 
     // ==========================================
-    // LOGIKA KAMERA (SAFARI FIX)
+    // LOGIKA KAMERA (FIX MIRROR & SAFARI)
     // ==========================================
     async setupCamera() {
-        // 1. Matikan stream lama (Wajib untuk switch camera)
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
         }
 
-        // Konfigurasi dasar berdasarkan mode saat ini
+        // Atur Style Mirroring Video secara Dinamis
+        // Depan = Mirror (scaleX -1), Belakang = Normal (none)
+        if (this.facingMode === 'user') {
+            this.video.style.transform = 'scaleX(-1)';
+        } else {
+            this.video.style.transform = 'none';
+        }
+
         let constraintsBase = {};
         if (this.facingMode === 'environment') {
             constraintsBase = { exact: 'environment' };
@@ -70,9 +76,8 @@ class PhotoBooth {
             constraintsBase = 'user';
         }
 
-        // TAHAP 1: Coba Ideal (Kamera + Resolusi Bagus)
-        // Ini biasanya jalan di Chrome/Android/Desktop
         try {
+            // TAHAP 1: Ideal
             const constraints = {
                 video: {
                     facingMode: constraintsBase,
@@ -86,47 +91,37 @@ class PhotoBooth {
             this.video.srcObject = this.stream;
             
         } catch (error) {
-            console.warn('Gagal Tahap 1 (Resolusi+Mode), mencoba mode Safari...', error);
+            console.warn('Gagal Tahap 1, mencoba mode fallback Safari...', error);
 
-            // TAHAP 2: SAFARI FALLBACK
-            // Safari sering error Overconstrained jika kita minta resolusi spesifik di kamera belakang.
-            // Solusinya: Hapus constraint resolusi, biarkan Safari memilih sendiri.
             try {
+                // TAHAP 2: Safari Fallback (Tanpa Resolusi)
                 const constraintsSafari = {
-                    video: {
-                        facingMode: constraintsBase // HANYA facing mode, tanpa width/height
-                    },
+                    video: { facingMode: constraintsBase },
                     audio: false
                 };
-
                 this.stream = await navigator.mediaDevices.getUserMedia(constraintsSafari);
                 this.video.srcObject = this.stream;
 
             } catch (errorSafari) {
-                console.warn('Gagal Tahap 2 (Exact Mode), mencoba mode kompatibilitas...', errorSafari);
+                console.warn('Gagal Tahap 2, mencoba mode kompatibilitas...', errorSafari);
 
-                // TAHAP 3: LAST RESORT
-                // Hapus kata kunci 'exact'. Ini tidak menjamin kamera belakang, 
-                // tapi setidaknya kamera akan nyala daripada error.
                 try {
+                    // TAHAP 3: Last Resort (Hapus 'exact')
                     const constraintsBasic = {
-                        video: {
-                            facingMode: this.facingMode // Tanpa { exact: ... }
-                        },
+                        video: { facingMode: this.facingMode },
                         audio: false
                     };
                     this.stream = await navigator.mediaDevices.getUserMedia(constraintsBasic);
                     this.video.srcObject = this.stream;
                 } catch (finalError) {
                     console.error('Kamera gagal total:', finalError);
-                    alert('Gagal mengakses kamera. Silakan cek izin browser Safari Anda.');
+                    alert('Gagal mengakses kamera. Cek izin browser.');
                 }
             }
         }
     }
 
     async switchCamera() {
-        // Toggle User <-> Environment
         this.facingMode = (this.facingMode === 'user') ? 'environment' : 'user';
         await this.setupCamera();
     }
@@ -135,29 +130,24 @@ class PhotoBooth {
     // EVENT LISTENERS
     // ==========================================
     attachEventListeners() {
-        // Switch Camera
         if (this.switchCameraBtn) {
             this.switchCameraBtn.addEventListener('click', () => this.switchCamera());
         }
 
-        // Upload Foto
         this.uploadPhotoBtn.addEventListener('click', () => this.photoFileInput.click());
         this.photoFileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
 
-        // Background Color
         document.querySelectorAll('.color-btn').forEach(btn => {
             if (!btn.classList.contains('upload-btn')) {
                 btn.addEventListener('click', (e) => this.handleBackgroundChange(e));
             }
         });
 
-        // Background Upload
         if (this.bgUploadBtnTrigger) {
             this.bgUploadBtnTrigger.addEventListener('click', () => this.bgUploadInput.click());
         }
         this.bgUploadInput.addEventListener('change', (e) => this.handleBgFileSelect(e));
 
-        // Cropper
         this.cropConfirmBtn.addEventListener('click', () => this.handleCropConfirm());
         this.closeCropBtn.addEventListener('click', () => {
             this.cropModal.style.display = 'none';
@@ -165,7 +155,6 @@ class PhotoBooth {
             this.bgUploadInput.value = ''; 
         });
 
-        // Template & Actions
         document.querySelectorAll('.opt-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleTemplateChange(e));
         });
@@ -174,7 +163,6 @@ class PhotoBooth {
         this.previewBtn.addEventListener('click', () => this.showPreview());
         this.downloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
 
-        // Modal Controls
         this.closePreviewBtn.addEventListener('click', () => this.closePreview());
         this.backBtn.addEventListener('click', () => this.closePreview());
         this.confirmDownloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
@@ -316,7 +304,7 @@ class PhotoBooth {
     }
 
     // ==========================================
-    // LOGIKA TEMPLATE & CAPTURE
+    // TEMPLATE & CAPTURE
     // ==========================================
     handleTemplateChange(event) {
         const btn = event.currentTarget;
@@ -355,17 +343,17 @@ class PhotoBooth {
         // Reset Transform
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // LOGIKA MIRROR:
-        // Jika Kamera Depan -> Mirror (Balik Horizontal)
-        // Jika Kamera Belakang -> Normal
+        // LOGIKA MIRROR HASIL FOTO:
+        // Jika mode 'user' (depan), maka kita mirror hasilnya.
+        // Jika mode 'environment' (belakang), biarkan normal.
         if (this.facingMode === 'user') {
             ctx.translate(this.previewCanvas.width, 0);
             ctx.scale(-1, 1);
-        } 
+        }
         
         ctx.drawImage(this.video, 0, 0);
         
-        // Kembalikan transform ke normal agar proses selanjutnya aman
+        // Kembalikan ke normal untuk proses selanjutnya
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         const photoData = this.previewCanvas.toDataURL('image/png');
@@ -426,7 +414,7 @@ class PhotoBooth {
         const photos = this.photos;
 
         const stripWidth = 600; 
-        const photoMargin = 30; // Bingkai tipis
+        const photoMargin = 30;
         const photoGap = 30;    
         const headerHeight = 150; 
         const footerHeight = 100; 
@@ -459,7 +447,7 @@ class PhotoBooth {
                     img.onload = () => {
                         const yPosition = headerHeight + (index * (photoHeight + photoGap));
                         
-                        // Bingkai putih tipis
+                        // Bingkai putih
                         ctx.fillStyle = "#FFFFFF";
                         ctx.fillRect(photoMargin - 5, yPosition - 5, photoWidth + 10, photoHeight + 10);
 
