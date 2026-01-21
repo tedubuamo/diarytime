@@ -12,10 +12,10 @@ class PhotoBooth {
         this.previewBtn = document.getElementById('preview-btn');
         this.downloadBtn = document.getElementById('download-btn');
         
-        // INPUTS BARU
+        // INPUTS BARU (Photo Upload & Switch Camera)
         this.uploadPhotoBtn = document.getElementById('upload-photo-btn');
         this.photoFileInput = document.getElementById('photo-file-input');
-        this.switchCameraBtn = document.getElementById('switch-camera-btn'); // TOMBOL BARU
+        this.switchCameraBtn = document.getElementById('switch-camera-btn');
 
         // Inputs & Sidebar
         this.photoStrip = document.getElementById('photo-strip');
@@ -45,7 +45,7 @@ class PhotoBooth {
         };
         this.maxPhotos = 1;
         
-        // STATE BARU: Default kamera depan
+        // STATE KAMERA: Default User (Depan)
         this.facingMode = 'user'; 
 
         this.init();
@@ -56,53 +56,73 @@ class PhotoBooth {
         this.attachEventListeners();
     }
 
+    // --- LOGIKA KAMERA YANG DIPERBAIKI ---
     async setupCamera() {
-        // Matikan stream lama jika ada (PENTING untuk switch camera)
+        // 1. Matikan kamera sebelumnya (PENTING AGAR BISA SWITCH)
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
         }
 
-        try {
-            // Gunakan this.facingMode agar dinamis
-            const constraints = {
-                video: { 
-                    facingMode: this.facingMode, // 'user' atau 'environment'
-                    width: { ideal: 1280 }, 
-                    height: { ideal: 960 } 
-                },
-                audio: false
-            };
+        // 2. Tentukan Constraint (Aturan) Kamera
+        let videoConstraints = {};
 
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (this.facingMode === 'environment') {
+            // JIKA KAMERA BELAKANG:
+            // Kita pakai "exact" agar HP dipaksa pindah ke belakang.
+            // Tanpa "exact", kadang browser HP tetap diam di kamera depan.
+            videoConstraints = { facingMode: { exact: 'environment' } };
+        } else {
+            // JIKA KAMERA DEPAN:
+            videoConstraints = { facingMode: 'user' };
+        }
+
+        // Tambahkan resolusi ideal
+        videoConstraints.width = { ideal: 1280 };
+        videoConstraints.height = { ideal: 960 };
+
+        try {
+            // Coba nyalakan kamera dengan aturan di atas
+            this.stream = await navigator.mediaDevices.getUserMedia({ 
+                video: videoConstraints, 
+                audio: false 
+            });
             this.video.srcObject = this.stream;
         } catch (error) {
-            console.error('Camera access denied:', error);
-            alert('Gagal mengakses kamera. Pastikan izin diberikan.');
+            console.warn('Gagal dengan constraint exact, mencoba mode fallback...', error);
+            
+            // FALLBACK: Jika di Laptop/PC tidak ada kamera belakang (error Overconstrained),
+            // kita coba nyalakan kamera apa saja yang ada tanpa "exact".
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: this.facingMode }, // Hapus "exact"
+                    audio: false 
+                });
+                this.video.srcObject = this.stream;
+            } catch (retryError) {
+                console.error('Kamera tetap error:', retryError);
+                alert('Gagal mengakses kamera. Pastikan izin diberikan dan perangkat mendukung.');
+            }
         }
     }
 
-    // --- FUNGSI BARU: SWITCH CAMERA ---
     async switchCamera() {
-        // Toggle mode: Jika sekarang 'user' ubah ke 'environment', dan sebaliknya
+        // Toggle: Jika User -> Environment, Jika Environment -> User
         this.facingMode = (this.facingMode === 'user') ? 'environment' : 'user';
-        
-        // Setup ulang kamera dengan mode baru
         await this.setupCamera();
     }
 
     attachEventListeners() {
-        // --- EVENT SWITCH CAMERA ---
+        // --- 1. SWITCH CAMERA & UPLOAD ---
         if (this.switchCameraBtn) {
             this.switchCameraBtn.addEventListener('click', () => this.switchCamera());
         }
 
-        // --- UPLOAD FOTO ---
         this.uploadPhotoBtn.addEventListener('click', () => {
             this.photoFileInput.click();
         });
         this.photoFileInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
 
-        // --- BACKGROUND ---
+        // --- 2. BACKGROUND ---
         document.querySelectorAll('.color-btn').forEach(btn => {
             if (!btn.classList.contains('upload-btn')) {
                 btn.addEventListener('click', (e) => this.handleBackgroundChange(e));
@@ -125,7 +145,7 @@ class PhotoBooth {
             this.bgUploadInput.value = ''; 
         });
 
-        // --- TEMPLATE & ACTIONS ---
+        // --- 3. TEMPLATE & ACTIONS ---
         document.querySelectorAll('.opt-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleTemplateChange(e));
         });
@@ -134,7 +154,7 @@ class PhotoBooth {
         this.previewBtn.addEventListener('click', () => this.showPreview());
         this.downloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
 
-        // --- MODAL ---
+        // --- 4. MODAL ---
         this.closePreviewBtn.addEventListener('click', () => this.closePreview());
         this.backBtn.addEventListener('click', () => this.closePreview());
         this.confirmDownloadBtn.addEventListener('click', () => this.downloadPhotoStrip());
@@ -144,13 +164,8 @@ class PhotoBooth {
         });
     }
 
-    // ... (SISA KODE KE BAWAH TIDAK BERUBAH, SAMA SEPERTI SEBELUMNYA) ...
-    // Pastikan Anda menyalin kode helper di bawah ini (handlePhotoUpload, smartCropImage, dll)
-    // dari kode sebelumnya atau biarkan tetap ada di file Anda.
-    
-    // ==========================================
-    // LOGIKA UPLOAD FOTO (SMART CROP)
-    // ==========================================
+    // ... Helper Functions (Smart Crop, Background, dll) tetap sama ...
+
     handlePhotoUpload(event) {
         if (this.photos.length >= this.maxPhotos) {
             alert(`Maximum ${this.maxPhotos} photos reached!`);
@@ -206,9 +221,6 @@ class PhotoBooth {
         return canvas.toDataURL('image/png');
     }
 
-    // ==========================================
-    // LOGIKA BACKGROUND (CROPPER)
-    // ==========================================
     handleBgFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -291,9 +303,6 @@ class PhotoBooth {
         }
     }
 
-    // ==========================================
-    // LOGIKA INTI PHOTOBOOTH
-    // ==========================================
     handleTemplateChange(event) {
         const btn = event.currentTarget;
         const template = btn.dataset.template;
@@ -331,15 +340,16 @@ class PhotoBooth {
         this.previewCanvas.width = this.video.videoWidth;
         this.previewCanvas.height = this.video.videoHeight;
 
-        // Mirror effect HANYA JIKA kamera depan
         ctx.translate(this.previewCanvas.width, 0);
         
-        // Jika kamera depan, mirror (-1). Jika belakang, normal (1)
+        // LOGIKA MIRROR:
+        // Kamera Depan ('user') -> Mirror (-1)
+        // Kamera Belakang ('environment') -> Normal (1)
         if (this.facingMode === 'user') {
             ctx.scale(-1, 1);
         } else {
-            ctx.scale(1, 1); // Jangan mirror kamera belakang agar tulisan terbaca benar
-            ctx.translate(-this.previewCanvas.width, 0); // Koreksi posisi translate
+            ctx.scale(1, 1);
+            ctx.translate(-this.previewCanvas.width, 0);
         }
         
         ctx.drawImage(this.video, 0, 0);

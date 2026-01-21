@@ -6,8 +6,8 @@
     <title>DiaryTime Photobooth</title>
     <link rel="stylesheet" href="css/style.css">
     
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link href="https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +29,7 @@
                 </div>
 
                 <div class="camera-actions">
-                    <button id="upload-photo-btn" class="upload-action-btn" title="Pick from Gallery">
+                    <button id="upload-photo-btn" class="upload-action-btn" title="Upload Foto">
                         📂
                     </button>
                     <input type="file" id="photo-file-input" accept="image/*" hidden>
@@ -39,7 +39,7 @@
                         <span class="btn-text">TAKE PHOTO</span>
                     </button>
 
-                    <button id="switch-camera-btn" class="upload-action-btn" title="Switch Camera">
+                    <button id="switch-camera-btn" class="upload-action-btn" title="Ganti Kamera">
                         🔄
                     </button>
                 </div>
@@ -107,14 +107,14 @@
     <div id="crop-modal" class="modal" style="display: none;">
         <div class="modal-box crop-box">
             <div class="modal-top">
-                <h3>Adjust Background</h3>
+                <h3>Adjust Image</h3>
                 <button id="close-crop">✕</button>
             </div>
             <div class="crop-container">
                 <img id="image-to-crop" src="" style="max-width: 100%;">
             </div>
             <div class="modal-bottom">
-                <button id="crop-confirm-btn" class="shutter-btn full-width">✅ Use This Crop</button>
+                <button id="crop-confirm-btn" class="shutter-btn full-width">✅ Use This</button>
             </div>
         </div>
     </div>
