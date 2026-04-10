@@ -114,6 +114,7 @@ video {
     grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
+}
 
 .control-group h3 { font-size: 0.9rem; text-transform: uppercase; color: #b2bec3; margin-bottom: 10px; }
 .options-grid { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -132,6 +133,21 @@ video {
 .color-btn:hover { transform: scale(1.1); }
 .color-btn.active { border-color: #2d3436; transform: scale(1.1); }
 .upload-btn { display: flex; align-items: center; justify-content: center; background: #fff; font-size: 1.2rem; }
+
+.title-color-btn {
+    width: 35px; height: 35px; border-radius: 50%;
+    border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer; transition: transform 0.2s;
+}
+.title-color-btn:hover { transform: scale(1.1); }
+.title-color-btn.active { border-color: #2d3436; transform: scale(1.1); }
+
+.filter-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-btn {
+    flex: 1; padding: 6px 8px; border: 2px solid #dfe6e9; background: white;
+    border-radius: 6px; font-weight: 600; font-size: 0.75rem; cursor: pointer; color: #636e72;
+}
+.filter-btn.active { border-color: var(--primary); color: var(--primary); background: #eef2ff; }
 
 /* --- KOLOM KANAN: STRIP --- */
 .strip-zone {
@@ -191,8 +207,8 @@ video {
 .modal-box {
     background: white;
     width: 100%;
-    max-width: 500px; /* Lebar maksimal di desktop */
-    max-height: 85vh; /* Tinggi maksimal 85% layar HP agar tombol tidak hilang */
+    max-width: 380px; /* Lebar maksimal lebih kecil */
+    max-height: 80vh; /* Tinggi maksimal */
     border-radius: 15px;
     display: flex;
     flex-direction: column; /* Susun Header - Isi - Footer ke bawah */
@@ -228,13 +244,13 @@ video {
     justify-content: center;
     align-items: flex-start; /* Gambar mulai dari atas */
     -webkit-overflow-scrolling: touch; /* Scroll mulus di iPhone */
+    max-height: 50vh; /* Batasi tinggi */
 }
 
 /* KUNCI PERBAIKAN GAMBAR: */
 #preview-display {
-    width: 100% !important; /* Paksa lebar mengikuti layar HP */
-    max-width: 100%; 
-    height: auto !important; /* Tinggi menyesuaikan proporsi */
+    width: auto !important; /* Proporsional berdasarkan height */
+    height: 500px !important; /* Fixed height untuk viewport modal */
     display: block;
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     border-radius: 4px;

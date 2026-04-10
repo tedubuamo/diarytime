@@ -38,9 +38,11 @@ class PhotoBooth {
         // --- STATE ---
         this.stream = null;
         this.photos = [];
-        this.currentTemplate = 'single';
+        this.currentTemplate = 'three-vertical';
         this.currentBackground = { type: 'solid-blue', data: '#6c5ce7' };
-        this.maxPhotos = 1;
+        this.currentTitleColor = 'white'; // Warna judul
+        this.currentFilter = 'none'; // Filter aesthetic
+        this.maxPhotos = 3;
         
         // Default Facing Mode
         this.facingMode = 'user'; 
@@ -117,6 +119,16 @@ class PhotoBooth {
             if (!btn.classList.contains('upload-btn')) {
                 btn.addEventListener('click', (e) => this.handleBackgroundChange(e));
             }
+        });
+
+        // Warna Title
+        document.querySelectorAll('.title-color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleTitleColorChange(e));
+        });
+
+        // Filter Aesthetic
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleFilterChange(e));
         });
 
         // Crop Controls
@@ -265,6 +277,42 @@ class PhotoBooth {
         }
     }
 
+    handleTitleColorChange(event) {
+        const btn = event.currentTarget;
+        const titleColor = btn.dataset.titleColor;
+        document.querySelectorAll('.title-color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.currentTitleColor = titleColor;
+    }
+
+    handleFilterChange(event) {
+        const btn = event.currentTarget;
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.currentFilter = filter;
+        this.applyVideoFilter();
+    }
+
+    applyVideoFilter() {
+        let filterStyle = '';
+        switch(this.currentFilter) {
+            case 'sepia':
+                filterStyle = 'sepia(100%)';
+                break;
+            case 'grayscale':
+                filterStyle = 'grayscale(100%)';
+                break;
+            case 'vintage':
+                filterStyle = 'sepia(30%) brightness(110%) contrast(90%)';
+                break;
+            case 'none':
+            default:
+                filterStyle = 'none';
+        }
+        this.video.style.filter = filterStyle;
+    }
+
     handleTemplateChange(event) {
         const btn = event.currentTarget;
         const template = btn.dataset.template;
@@ -359,28 +407,41 @@ class PhotoBooth {
         if (this.photos.length === 0) return null;
         const ctx = this.finalCanvas.getContext('2d');
         const photos = this.photos;
-        const stripWidth = 600; 
-        const photoMargin = 30; 
-        const photoGap = 30;    
-        const headerHeight = 150; 
+        
+        // Output size: 877x1240 pixel untuk 3 frame
+        const stripWidth = 877; 
+        const stripHeight = 1240;
+        const photoMargin = 150; 
+        const photoGap = 40;    
+        const headerHeight = 100; 
         const footerHeight = 100; 
         const fontFamily = "'Outfit', sans-serif";
-        const titleText = "diarytime";
+        const titleText = "Data Science EXPO";
         const photoWidth = stripWidth - (photoMargin * 2);
         
         return new Promise((resolve) => {
             const firstImg = new Image();
             firstImg.onload = () => {
                 const photoAspect = firstImg.width / firstImg.height;
-                const photoHeight = photoWidth / photoAspect;
-                const totalHeight = headerHeight + (photoHeight * this.photos.length) + (photoGap * (this.photos.length - 1)) + footerHeight + photoGap; 
+                
+                // Hitung photo height untuk 3 frame yang pas dalam stripHeight
+                const availableHeight = stripHeight - headerHeight - footerHeight - (photoGap * 2);
+                const photoHeight = availableHeight / 3;
+                
                 this.finalCanvas.width = stripWidth;
-                this.finalCanvas.height = totalHeight;
+                this.finalCanvas.height = stripHeight;
 
-                this.drawBackground(ctx, stripWidth, totalHeight);
+                this.drawBackground(ctx, stripWidth, stripHeight);
 
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = `bold 50px ${fontFamily}`;
+                // Set title color berdasarkan pilihan user
+                const titleColorMap = {
+                    'white': '#FFFFFF',
+                    'black': '#000000',
+                    'gold': '#FFD700',
+                    'pink': '#FF1493'
+                };
+                ctx.fillStyle = titleColorMap[this.currentTitleColor] || '#FFFFFF';
+                ctx.font = `bold 35px ${fontFamily}`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(titleText, stripWidth / 2, headerHeight / 2);
@@ -395,13 +456,6 @@ class PhotoBooth {
                         ctx.drawImage(img, photoMargin, yPosition, photoWidth, photoHeight);
                         loadedCount++;
                         if (loadedCount === photos.length) {
-                            const footerYCenter = totalHeight - (footerHeight / 2);
-                            const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
-                            const dateText = new Date().toLocaleDateString('en-GB', dateOptions);
-                            ctx.fillStyle = '#FFFFFF';
-                            ctx.font = `30px ${fontFamily}`;
-                            ctx.textAlign = 'center';
-                            ctx.fillText(dateText, stripWidth / 2, footerYCenter);
                             resolve();
                         }
                     };
@@ -438,7 +492,7 @@ class PhotoBooth {
             await this.generatePhotoStrip();
             const link = document.createElement('a');
             link.href = this.finalCanvas.toDataURL('image/png');
-            link.download = `diarytime-${Date.now()}.png`;
+            link.download = `Sains Data EXPO-${Date.now()}.png`;
             link.click();
             this.closePreview();
         } catch (error) { console.error('Download failed:', error); }

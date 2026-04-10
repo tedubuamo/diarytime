@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiaryTime Photobooth</title>
+    <title>Data Science EXPO Photobooth</title>
     
     <link rel="stylesheet" href="css/style.css">
     
@@ -18,7 +18,7 @@
 
     <div class="main-container">
         <header>
-            <h1>📸 diarytime</h1>
+            <h1>📸 Data Science EXPO</h1>
             <p>Capture your aesthetic moments</p>
         </header>
 
@@ -49,9 +49,7 @@
                     <div class="control-group">
                         <h3>Layout</h3>
                         <div class="options-grid">
-                            <button class="opt-btn active" data-template="single">1 Frame</button>
-                            <button class="opt-btn" data-template="three-vertical">3 Frames</button>
-                            <button class="opt-btn" data-template="four-vertical">4 Frames</button>
+                            <button class="opt-btn active" data-template="three-vertical">3 Frames</button>
                         </div>
                     </div>
 
@@ -66,6 +64,26 @@
                             <button class="color-btn upload-btn" data-bg="upload">🖼️
                                 <input type="file" id="bg-upload" accept="image/*" hidden>
                             </button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>Title Color</h3>
+                        <div class="color-options">
+                            <button class="title-color-btn active" data-title-color="white" style="background: #ffffff; border: 2px solid #333;"></button>
+                            <button class="title-color-btn" data-title-color="black" style="background: #000000;"></button>
+                            <button class="title-color-btn" data-title-color="gold" style="background: #ffd700;"></button>
+                            <button class="title-color-btn" data-title-color="pink" style="background: #ff1493;"></button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>Filter</h3>
+                        <div class="filter-options">
+                            <button class="filter-btn active" data-filter="none">None</button>
+                            <button class="filter-btn" data-filter="sepia">Sepia</button>
+                            <button class="filter-btn" data-filter="grayscale">B&W</button>
+                            <button class="filter-btn" data-filter="vintage">Vintage</button>
                         </div>
                     </div>
                 </div>
